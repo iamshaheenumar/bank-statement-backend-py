@@ -1,0 +1,83 @@
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.pdb
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+.venv.bak/
+env.bak/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# -----------------------------
+# Logs & Temp Files
+# -----------------------------
+*.log
+*.tmp
+*.temp
+logs/
+*.sqlite3
+*.db
+*.DS_Store
+*.swp
+.cache/
+tmp/
+.temp/
+*.bak
+
+# -----------------------------
+# Test / Upload Artifacts
+# -----------------------------
+uploads/
+test_pdfs/
+samples/
+*.pdf
+*.csv
+*.xlsx
+*.json
+*.zip
+
+# -----------------------------
+# Environment / Secrets
+# -----------------------------
+.env
+.env.local
+.env.*.local
+secrets.json
+
+# -----------------------------
+# IDE / Editor Files
+# -----------------------------
+.vscode/
+.idea/
+.spyproject/
+*.code-workspace
+
+# -----------------------------
+# Node / PM2 (if used for process management)
+# -----------------------------
+pm2.log
+ecosystem.config.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -----------------------------
+# OS-Specific
+# -----------------------------
+Thumbs.db
+.DS_Store
