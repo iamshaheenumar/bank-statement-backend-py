@@ -17,10 +17,8 @@ SKIP_KEYWORDS = [
     "payment due date",
     "profit/other charges",
     "current balance",
-    "billed profit",
     "profit reversal",
     "finance charges",
-    "late fee",
 ]
 
 def clean_amount(val: str) -> float:
