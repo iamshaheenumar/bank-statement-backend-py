@@ -11,7 +11,7 @@ app = FastAPI(title="Bank PDF Parser", version="0.5.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001"," https://bank-statement-backend-py.onrender.com"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
