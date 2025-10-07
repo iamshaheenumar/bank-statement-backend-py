@@ -7,7 +7,7 @@ from parsers import get_parser
 from common.bank_detect import detect_bank
 from preview import preview_pdf
 
-app = FastAPI(title="Bank PDF Parser", version="0.5.0")
+app = FastAPI(title="Statement Parser", version="0.5.0")
 
 app.add_middleware(
     CORSMiddleware,
