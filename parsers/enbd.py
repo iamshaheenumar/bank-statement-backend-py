@@ -6,6 +6,9 @@ from common.pdf_utils import (
     normalize_date,
 )
 
+BANK_NAME = "ENBD"
+CARD_TYPE = "debit"
+
 # Common ENBD keywords
 CREDIT_HINTS = {
     "salary", "credit", "inward", "uaefts", "refund", "reversal",
@@ -18,6 +21,10 @@ AMOUNT_TAIL_RE = re.compile(
 )
 BALANCE_ONLY_CR_RE = re.compile(
     r"(?<!\S)([\d,]+\.\d{2})\s*Cr\b", re.IGNORECASE
+)
+STATEMENT_PERIOD_RE = re.compile(
+    r"[Ff]rom\s*(\d{2}/\d{2}/\s*\d{4})\s*[Tt]o\s*(\d{2}/\d{2}/\d{4})",
+    re.IGNORECASE
 )
 
 
@@ -53,6 +60,8 @@ def parse_enbd(file_path: str, password: str | None = None):
 
     transactions = []
     last_balance = None  # tracks previous balance
+    statement_from = None
+    statement_to = None
 
     with pdf:
         current: dict | None = None
@@ -74,6 +83,55 @@ def parse_enbd(file_path: str, password: str | None = None):
                         last_balance = _clean_amount(m_bal.group(1))
                     continue
 
+                # Look for statement period
+                low = line.lower()
+                if "statement period" in low or "statement details" in low:
+                    # Collect the current and next two non-empty lines to search for the date range
+                    lines = text.splitlines()
+                    try:
+                        idx = lines.index(raw)
+                    except ValueError:
+                        idx = None
+
+                    search_lines = []
+                    if idx is not None:
+                        # include current line and up to two following lines
+                        for i in range(idx, min(idx + 3, len(lines))):
+                            l = lines[i].strip()
+                            if l:
+                                search_lines.append(l)
+                    else:
+                        search_lines = [line]
+
+                    # Try to find explicit dd/mm/YYYY dates in nearby lines (very permissive)
+                    date_finder = re.compile(r"(\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4})")
+                    found = []
+                    for check_line in search_lines:
+                        found.extend(date_finder.findall(check_line))
+
+                    if len(found) >= 2:
+                        # normalize by removing stray spaces and parse
+                        fd = found[0].replace(" ", "")
+                        td = found[1].replace(" ", "")
+                        statement_from = normalize_date(fd, "%d/%m/%Y")
+                        statement_to = normalize_date(td, "%d/%m/%Y")
+                    else:
+                        # fallback to the more specific statement period regex
+                        for check_line in search_lines:
+                            m_period = STATEMENT_PERIOD_RE.search(check_line)
+                            if m_period:
+                                from_date, to_date = m_period.groups()
+                                statement_from = normalize_date(from_date.replace(" ", ""), "%d/%m/%Y")
+                                statement_to = normalize_date(to_date, "%d/%m/%Y")
+                                break
+
+                    # Debugging info (remove or lower log level in production)
+                    if statement_from is None or statement_to is None:
+                        print(f"Statement period not found. Checked lines: {search_lines}, dates found: {found}")
+                    else:
+                        print(f"Statement period parsed: from={statement_from}, to={statement_to}")
+                    continue
+
                 # --- start of new transaction (date) ---
                 m = DATE_RE.match(line)
                 if m:
@@ -87,7 +145,8 @@ def parse_enbd(file_path: str, password: str | None = None):
                         "credit": 0.0,
                         "amount": 0.0,
                         "balance": None,
-                        "bank": "ENBD",
+                        "bank": BANK_NAME,
+                        "card_type": CARD_TYPE,
                     }
                     continue
 
@@ -156,9 +215,12 @@ def parse_enbd(file_path: str, password: str | None = None):
         and not any(x in t["description"].lower() for x in ("brought forward", "carried forward"))
     ]
 
-    normalized = normalize_transactions(clean, "ENBD")
+    normalized = normalize_transactions(clean, BANK_NAME, CARD_TYPE)
     return {
-        "bank": "ENBD",
+        "bank": BANK_NAME,
+        "card_type": CARD_TYPE,
         "summary": summarize_transactions(normalized),
         "transactions": normalized,
+        "from_date": statement_from,
+        "to_date": statement_to,
     }

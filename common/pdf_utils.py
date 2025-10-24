@@ -55,7 +55,7 @@ def open_pdf_safe(file_path: str, password: str | None = None):
     except Exception as e:
         return {"error": f"Failed to open PDF: {str(e)}"}
 
-def normalize_transactions(transactions: list, bank: str):
+def normalize_transactions(transactions: list, bank: str, card_type:str):
     """Ensure all transactions return the same structure."""
     normalized = []
     for tx in transactions:
@@ -65,7 +65,8 @@ def normalize_transactions(transactions: list, bank: str):
             "debit": tx.get("debit", 0.0),
             "credit": tx.get("credit", 0.0),
             "amount": tx.get("amount", 0.0),
-            "bank": bank
+            "bank": bank,
+            "card_type": card_type
         })
     return normalized
 

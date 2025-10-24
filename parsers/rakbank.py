@@ -1,6 +1,11 @@
 import re
-import pdfplumber
+import datetime
 from common.pdf_utils import open_pdf_safe, normalize_transactions, summarize_transactions, normalize_date
+
+BANK_NAME = "RAKBANK"
+CARD_TYPE = "credit"
+
+STATEMENT_PERIOD_RE = re.compile(r"(\d{1,2}/\d{1,2}/\d{4})\s*(?:to|TO|To)\s*(\d{1,2}/\d{1,2}/\d{4})")
 
 # AED transaction
 RAKBANK_LINE_REGEX = re.compile(
@@ -38,6 +43,8 @@ def clean_amount(val: str | None) -> float:
 
 def parse_rakbank(file_path: str, password: str | None = None):
     transactions = []
+    statement_from = None
+    statement_to = None
     pdf = open_pdf_safe(file_path, password)
     if isinstance(pdf, dict) and "error" in pdf:
         return pdf  # error dict
@@ -52,6 +59,15 @@ def parse_rakbank(file_path: str, password: str | None = None):
             for raw in lines:
                 low = raw.lower()
                 if any(k in low for k in SKIP_KEYWORDS):
+                    continue
+
+                # detect statement period lines like 'Statement Period: 15/08/2025 TO 14/09/2025'
+                if "statement period" in low:
+                    m = STATEMENT_PERIOD_RE.search(raw)
+                    if m:
+                        fd, td = m.groups()
+                        statement_from = normalize_date(fd.replace(" ", ""), "%d/%m/%Y")
+                        statement_to = normalize_date(td.replace(" ", ""), "%d/%m/%Y")
                     continue
 
                 # --------- AED transaction ----------
@@ -80,7 +96,8 @@ def parse_rakbank(file_path: str, password: str | None = None):
                         "credit": credit,
                         "amount": amt_val,
                         "balance": balance_val,
-                        "bank": "RAKBANK",
+                        "bank": BANK_NAME,
+                        "card_type": CARD_TYPE,
                     })
                     continue
 
@@ -110,7 +127,8 @@ def parse_rakbank(file_path: str, password: str | None = None):
                         "debit": debit,
                         "credit": credit,
                         "amount": aed_val,
-                        "bank": "RAKBANK",
+                        "bank": BANK_NAME,
+                        "card_type": CARD_TYPE,
                         # extra FX info (ignored in normalized output)
                         "fx_currency": ccy,
                         "fx_amount": fx_amt_val,
@@ -120,9 +138,12 @@ def parse_rakbank(file_path: str, password: str | None = None):
 
                 # ---------- Non-transaction line ----------
                 buffer_desc.append(raw)
-    normalized = normalize_transactions(transactions, "RAKBANK")
+    normalized = normalize_transactions(transactions, BANK_NAME, CARD_TYPE)
     return {
-        "bank": "RAKBANK",
+        "bank": BANK_NAME,
+        "card_type": CARD_TYPE,
         "summary": summarize_transactions(normalized),
         "transactions": normalized,
+        "from_date": statement_from,
+        "to_date": statement_to,
     }

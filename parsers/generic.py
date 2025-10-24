@@ -1,5 +1,8 @@
 from common.pdf_utils import open_pdf_safe, normalize_transactions, normalize_date, summarize_transactions
 
+BANK_NAME = "unknown"
+CARD_TYPE = "debit"
+
 def parse_generic(file_path: str, password: str | None = None):
     """
     Generic fallback parser:
@@ -7,6 +10,8 @@ def parse_generic(file_path: str, password: str | None = None):
     Normalizes structure to match other bank parsers.
     """
     transactions = []
+    statement_from = None
+    statement_to = None
     pdf = open_pdf_safe(file_path, password)
     if isinstance(pdf, dict) and "error" in pdf:
         return pdf
@@ -36,12 +41,16 @@ def parse_generic(file_path: str, password: str | None = None):
                         "credit": 0.0,
                         "amount": 0.0,
                         "balance": None,
-                        "bank": "unknown",
+                        "bank": BANK_NAME,
+                        "card_type": CARD_TYPE,
                     })
 
-    normalized = normalize_transactions(transactions, "unknown")
+    normalized = normalize_transactions(transactions, BANK_NAME, CARD_TYPE)
     return {
-        "bank": "unknown",
+        "bank": BANK_NAME,
+        "card_type": CARD_TYPE,
         "summary": summarize_transactions(normalized),
         "transactions": normalized,
+        "from_date": statement_from,
+        "to_date": statement_to,
     }
